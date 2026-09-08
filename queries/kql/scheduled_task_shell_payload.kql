@@ -1,0 +1,15 @@
+DeviceProcessEvents
+| where FileName =~ "schtasks.exe"
+| where ProcessCommandLine contains "/create" and ProcessCommandLine contains "/tn"
+| where ProcessCommandLine contains "powershell"
+    or ProcessCommandLine contains "pwsh"
+    or ProcessCommandLine contains "cmd.exe"
+    or ProcessCommandLine contains "wscript"
+    or ProcessCommandLine contains "cscript"
+    or ProcessCommandLine contains ".ps1"
+    or ProcessCommandLine contains ".vbs"
+    or ProcessCommandLine contains ".js"
+| project Timestamp, DeviceName, AccountDomain, AccountName, FileName,
+    ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine,
+    ProcessIntegrityLevel, ProcessTokenElevation, SHA1, ReportId
+| order by Timestamp desc

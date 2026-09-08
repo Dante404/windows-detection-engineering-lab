@@ -1,0 +1,38 @@
+title: Scheduled Task With Script or Shell Payload
+id: c842eb9f-4506-46da-8f1c-1d213f2464aa
+status: test
+description: Schtasks creates a named task whose action invokes a command shell, script host, or script file.
+references:
+  - https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/schtasks-create
+  - https://attack.mitre.org/techniques/T1053/005/
+author: Angelo Pitarresi
+date: 2026-09-08
+tags:
+  - attack.execution
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1053.005
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_image:
+    Image|endswith: '\schtasks.exe'
+  selection_create:
+    CommandLine|contains|all:
+      - '/create'
+      - '/tn'
+  selection_payload:
+    CommandLine|contains:
+      - powershell
+      - pwsh
+      - cmd.exe
+      - wscript
+      - cscript
+      - '.ps1'
+      - '.vbs'
+      - '.js'
+  condition: selection_image and selection_create and selection_payload
+falsepositives:
+  - Administrative automation and software installers that create script-based scheduled tasks
+level: medium

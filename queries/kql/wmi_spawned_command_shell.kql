@@ -1,0 +1,7 @@
+DeviceProcessEvents
+| where InitiatingProcessFileName =~ "wmiprvse.exe"
+| where FileName in~ ("cmd.exe", "powershell.exe", "pwsh.exe", "wscript.exe", "cscript.exe")
+| project Timestamp, DeviceName, AccountDomain, AccountName, FileName,
+    ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine,
+    ProcessIntegrityLevel, SHA1, ReportId
+| order by Timestamp desc

@@ -1,0 +1,15 @@
+| tstats summariesonly=false count min(_time) AS firstTime max(_time) AS lastTime
+    FROM datamodel=Endpoint.Processes
+    WHERE Processes.process_name IN ("powershell.exe", "pwsh.exe")
+    BY Processes.dest Processes.user Processes.process_name Processes.process Processes.parent_process_name
+| rename Processes.* AS *
+| eval command=lower(process)
+| where (
+    like(command, "%invoke-webrequest%") OR like(command, "%downloadstring%")
+    OR like(command, "%net.webclient%") OR like(command, "%start-bitstransfer%")
+    OR like(command, "% iwr %")
+  ) AND (
+    like(command, "%invoke-expression%") OR like(command, "% iex %")
+    OR like(command, "% -enc %") OR like(command, "% -encodedcommand %")
+  )
+| table firstTime lastTime dest user parent_process_name process_name process count

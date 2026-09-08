@@ -1,0 +1,28 @@
+title: WMI-Spawned Command Shell
+id: a126c8df-9138-4f12-b279-6f4c533e9012
+status: test
+description: WMI Provider Host creates a command or scripting interpreter, which can indicate remote process execution.
+references:
+  - https://attack.mitre.org/techniques/T1047/
+author: Angelo Pitarresi
+date: 2026-09-08
+tags:
+  - attack.execution
+  - attack.t1047
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_parent:
+    ParentImage|endswith: '\WmiPrvSE.exe'
+  selection_child:
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+      - '\wscript.exe'
+      - '\cscript.exe'
+  condition: selection_parent and selection_child
+falsepositives:
+  - Systems-management products and administrative scripts that execute commands through WMI
+level: high

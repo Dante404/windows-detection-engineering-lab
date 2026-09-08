@@ -1,0 +1,15 @@
+DeviceProcessEvents
+| where FileName in~ ("powershell.exe", "pwsh.exe")
+| where ProcessCommandLine contains "Invoke-WebRequest"
+    or ProcessCommandLine contains "DownloadString"
+    or ProcessCommandLine contains "Net.WebClient"
+    or ProcessCommandLine contains "Start-BitsTransfer"
+    or ProcessCommandLine contains " iwr "
+| where ProcessCommandLine contains "Invoke-Expression"
+    or ProcessCommandLine contains "EncodedCommand"
+    or ProcessCommandLine contains " iex "
+    or ProcessCommandLine contains " -enc "
+| project Timestamp, DeviceName, AccountDomain, AccountName, FileName,
+    ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine,
+    SHA1, ReportId
+| order by Timestamp desc

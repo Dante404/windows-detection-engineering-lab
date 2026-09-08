@@ -1,0 +1,33 @@
+name: Validate detections
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install validation dependencies
+        run: python -m pip install --requirement requirements-dev.txt
+
+      - name: Validate rule structure
+        run: python tools/validate_rules.py
+
+      - name: Run regression tests
+        run: python -m unittest discover --start-directory tests --verbose

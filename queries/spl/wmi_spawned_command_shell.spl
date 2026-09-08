@@ -1,0 +1,7 @@
+| tstats summariesonly=false count min(_time) AS firstTime max(_time) AS lastTime
+    FROM datamodel=Endpoint.Processes
+    WHERE Processes.process_name IN ("cmd.exe", "powershell.exe", "pwsh.exe", "wscript.exe", "cscript.exe")
+    BY Processes.dest Processes.user Processes.process_name Processes.process Processes.parent_process_name Processes.parent_process
+| rename Processes.* AS *
+| where lower(parent_process_name)="wmiprvse.exe"
+| table firstTime lastTime dest user parent_process_name parent_process process_name process count

@@ -1,0 +1,13 @@
+| tstats summariesonly=false count min(_time) AS firstTime max(_time) AS lastTime
+    FROM datamodel=Endpoint.Processes
+    WHERE Processes.process_name="schtasks.exe"
+    BY Processes.dest Processes.user Processes.process_name Processes.process Processes.parent_process_name
+| rename Processes.* AS *
+| eval command=lower(process)
+| where like(command, "%/create%") AND like(command, "%/tn%") AND (
+    like(command, "%powershell%") OR like(command, "%pwsh%")
+    OR like(command, "%cmd.exe%") OR like(command, "%wscript%")
+    OR like(command, "%cscript%") OR like(command, "%.ps1%")
+    OR like(command, "%.vbs%") OR like(command, "%.js%")
+  )
+| table firstTime lastTime dest user parent_process_name process_name process count

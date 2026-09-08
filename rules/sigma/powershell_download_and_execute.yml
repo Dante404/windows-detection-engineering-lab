@@ -1,0 +1,39 @@
+title: PowerShell Download and Execute Pattern
+id: 3e3a7d6b-7e3a-4f6b-9a4d-22d2c1bc51e8
+status: test
+description: PowerShell combines a network retrieval primitive with a subsequent execution primitive in the same command line.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+  - https://attack.mitre.org/techniques/T1105/
+author: Angelo Pitarresi
+date: 2026-09-08
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.command-and-control
+  - attack.t1105
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_image:
+    Image|endswith:
+      - '\powershell.exe'
+      - '\pwsh.exe'
+  selection_download:
+    CommandLine|contains:
+      - Invoke-WebRequest
+      - DownloadString
+      - Net.WebClient
+      - Start-BitsTransfer
+      - ' iwr '
+  selection_execute:
+    CommandLine|contains:
+      - Invoke-Expression
+      - ' iex '
+      - ' -enc '
+      - ' -encodedcommand '
+  condition: selection_image and selection_download and selection_execute
+falsepositives:
+  - Software deployment or administrative scripts that retrieve and immediately execute trusted content
+level: high

@@ -1,0 +1,14 @@
+DeviceProcessEvents
+| where FileName in~ ("powershell.exe", "pwsh.exe")
+| where ProcessCommandLine contains "Set-MpPreference"
+    or ProcessCommandLine contains "Add-MpPreference"
+| where ProcessCommandLine contains "DisableRealtimeMonitoring"
+    or ProcessCommandLine contains "DisableBehaviorMonitoring"
+    or ProcessCommandLine contains "DisableIOAVProtection"
+    or ProcessCommandLine contains "ExclusionPath"
+    or ProcessCommandLine contains "ExclusionProcess"
+    or ProcessCommandLine contains "ExclusionExtension"
+| project Timestamp, DeviceName, AccountDomain, AccountName, FileName,
+    ProcessCommandLine, InitiatingProcessFileName, InitiatingProcessCommandLine,
+    ProcessIntegrityLevel, ProcessTokenElevation, SHA1, ReportId
+| order by Timestamp desc

@@ -1,0 +1,30 @@
+title: PsExec Service Child Shell
+id: d42b9e7a-2e3d-4ef0-a3c5-7d2b60ab1c14
+status: test
+description: A PsExec-compatible service process creates a command or scripting interpreter.
+references:
+  - https://learn.microsoft.com/en-us/sysinternals/downloads/psexec
+  - https://attack.mitre.org/techniques/T1569/002/
+author: Angelo Pitarresi
+date: 2026-09-08
+tags:
+  - attack.execution
+  - attack.lateral-movement
+  - attack.t1569.002
+logsource:
+  category: process_creation
+  product: windows
+detection:
+  selection_parent:
+    ParentImage|endswith:
+      - '\PSEXESVC.exe'
+      - '\PAExec.exe'
+  selection_child:
+    Image|endswith:
+      - '\cmd.exe'
+      - '\powershell.exe'
+      - '\pwsh.exe'
+  condition: selection_parent and selection_child
+falsepositives:
+  - Approved remote administration and software deployment using PsExec or PAExec
+level: high
