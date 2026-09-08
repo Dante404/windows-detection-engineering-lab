@@ -1,0 +1,113 @@
+entries:
+  - id: mde-tvm-scid-2090-removable-drive-context
+    title: TVM SCID-2090 removable-drive context review
+    kind: hunt
+    platform: microsoft-defender-xdr
+    status: test
+    query: hunts/mde/tvm_scid_2090_removable_drive_context.kql
+    data_sources:
+      - DeviceTvmSecureConfigurationAssessment
+      - DeviceInfo
+      - DeviceEvents
+    expected_signals:
+      - scid-2090
+      - UsbDriveMounted
+      - MatchingRemovableDriveCount
+
+  - id: mde-asr-activity
+    title: Attack surface reduction activity
+    kind: hunt
+    platform: microsoft-defender-xdr
+    status: test
+    query: hunts/mde/asr_activity.kql
+    data_sources:
+      - DeviceEvents
+    expected_signals:
+      - AsrOfficeChildProcess
+      - AsrPsexecWmiChildProcess
+      - AsrWebShellCreation
+
+  - id: mde-browser-cookie-wal-domain-activity
+    title: Browser cookie WAL and domain activity
+    kind: hunt
+    platform: microsoft-defender-xdr
+    status: experimental
+    query: hunts/mde/browser_cookie_wal_domain_activity.kql
+    data_sources:
+      - DeviceFileEvents
+      - DeviceNetworkEvents
+    expected_signals:
+      - Cookies-wal
+      - wal_writes
+      - RemoteUrl
+
+  - id: mde-safe-links-click-to-email
+    title: Safe Links click-to-email correlation
+    kind: hunt
+    platform: microsoft-defender-xdr
+    status: experimental
+    query: hunts/mde/safe_links_click_to_email.kql
+    data_sources:
+      - UrlClickEvents
+      - EmailEvents
+    expected_signals:
+      - NetworkMessageId
+      - IsClickedThrough
+      - EmailMetadataStatus
+
+  - id: logscale-bits-download-activity
+    title: BITS download activity
+    kind: hunt
+    platform: crowdstrike-logscale
+    status: test
+    query: hunts/logscale/bits_download_activity.cql
+    data_sources:
+      - BitsJobCreated
+      - ProcessRollup2
+      - NetworkConnectIP4
+      - CustomIOADomainNameDetectionInfoEvent
+    expected_signals:
+      - BitsJobCreated
+      - selfJoinFilter
+      - TargetFileName
+
+  - id: logscale-office-child-process-chain
+    title: Office descendant child-process chain
+    kind: hunt
+    platform: crowdstrike-logscale
+    status: test
+    query: hunts/logscale/office_child_process_chain.cql
+    data_sources:
+      - ProcessRollup2
+    expected_signals:
+      - WINWORD
+      - ParentProcessId
+      - ChildCommandLine
+
+  - id: splunk-sysmon-suspicious-execution-network
+    title: Suspicious execution with network or DNS activity
+    kind: hunt
+    platform: splunk
+    status: experimental
+    query: hunts/splunk/sysmon_suspicious_execution_network.spl
+    data_sources:
+      - Sysmon Event ID 1
+      - Sysmon Event ID 3
+      - Sysmon Event ID 22
+    expected_signals:
+      - EventCode=1
+      - ProcessGuid
+      - DestinationIp
+
+  - id: mde-ransomware-posture-score
+    title: Ransomware control posture score
+    kind: analysis
+    platform: microsoft-defender-xdr
+    status: test
+    query: analytics/mde/ransomware_posture_score.kql
+    data_sources:
+      - DeviceTvmSecureConfigurationAssessment
+    expected_signals:
+      - scid-2003
+      - scid-2021
+      - RansomwarePostureScore

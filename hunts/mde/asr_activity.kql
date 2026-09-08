@@ -1,0 +1,37 @@
+// Normalizes block, audit, and warn activity for known attack surface reduction rules.
+let Lookback = 7d;
+let RuleMap = datatable(BaseActionType:string, RuleName:string)
+[
+    "AsrVulnerableSignedDriver", "Block abuse of exploited vulnerable signed drivers",
+    "AsrAdobeReaderChildProcess", "Block Adobe Reader from creating child processes",
+    "AsrOfficeChildProcess", "Block Office applications from creating child processes",
+    "AsrLsassCredentialTheft", "Block credential stealing from LSASS",
+    "AsrExecutableEmailContent", "Block executable content from email and webmail",
+    "AsrUntrustedExecutable", "Block untrusted executable files",
+    "AsrObfuscatedScript", "Block potentially obfuscated scripts",
+    "AsrScriptExecutableDownload", "Block scripts from launching downloaded executable content",
+    "AsrOfficeProcessInjection", "Block Office applications from injecting code",
+    "AsrOfficeCommAppChildProcess", "Block Office communication application child processes",
+    "AsrPersistenceThroughWmi", "Block persistence through WMI event subscription",
+    "AsrPsexecWmiChildProcess", "Block process creation from PsExec and WMI",
+    "AsrSafeModeReboot", "Block rebooting into Safe Mode",
+    "AsrUntrustedUsbProcess", "Block untrusted processes running from USB",
+    "AsrOfficeMacroWin32ApiCalls", "Block Win32 API calls from Office macros",
+    "AsrRansomware", "Use advanced ransomware protection",
+    "AsrWebShellCreation", "Block web shell creation for servers",
+    "AsrAbusedSystemTool", "Block copied or impersonated system tools"
+];
+DeviceEvents
+| where Timestamp >= ago(Lookback)
+| where ActionType startswith "Asr"
+| extend BaseActionType=replace_regex(ActionType, @"(Blocked|Audited|WarnBypassed)$", "")
+| extend ASRMode=case(ActionType endswith "Blocked", "Block",
+    ActionType endswith "Audited", "Audit",
+    ActionType endswith "WarnBypassed", "Warn bypassed", "Other")
+| lookup kind=leftouter RuleMap on BaseActionType
+| extend RuleName=coalesce(RuleName, BaseActionType)
+| project Timestamp, DeviceName, DeviceId, RuleName, ASRMode, ActionType,
+    FileName, FolderPath, SHA1, AccountDomain, AccountName,
+    InitiatingProcessFileName, InitiatingProcessCommandLine,
+    InitiatingProcessParentFileName, AdditionalFields, ReportId
+| order by Timestamp desc

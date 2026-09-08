@@ -5,6 +5,8 @@ import sys
 import unittest
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -15,6 +17,7 @@ RULE_DIR = ROOT / "rules" / "sigma"
 KQL_DIR = ROOT / "queries" / "kql"
 SPL_DIR = ROOT / "queries" / "spl"
 CASE_PATH = ROOT / "tests" / "cases" / "process_events.json"
+HUNT_CATALOG_PATH = ROOT / "hunts" / "catalog.yml"
 
 
 def _rules() -> dict[str, dict]:
@@ -28,6 +31,9 @@ def _case_id(case: dict) -> str:
 
 with CASE_PATH.open("r", encoding="utf-8") as handle:
     CASES = json.load(handle)
+
+with HUNT_CATALOG_PATH.open("r", encoding="utf-8") as handle:
+    HUNT_CATALOG = yaml.safe_load(handle)["entries"]
 
 
 class RepositoryTests(unittest.TestCase):
@@ -78,6 +84,40 @@ class RepositoryTests(unittest.TestCase):
                     matches_rule(rules[case["rule"]], case["event"]),
                     case["expected"],
                 )
+
+    def test_hunt_catalog_is_valid(self) -> None:
+        self.assertEqual(len(HUNT_CATALOG), 8)
+        self.assertEqual(len({entry["id"] for entry in HUNT_CATALOG}), 8)
+        self.assertEqual(len({entry["query"] for entry in HUNT_CATALOG}), 8)
+
+        discovered_queries = {
+            path.relative_to(ROOT).as_posix()
+            for base in (ROOT / "hunts", ROOT / "analytics")
+            for path in base.rglob("*")
+            if path.suffix in {".kql", ".cql", ".spl"}
+        }
+        catalog_queries = {entry["query"] for entry in HUNT_CATALOG}
+        self.assertEqual(catalog_queries, discovered_queries)
+
+        for entry in HUNT_CATALOG:
+            with self.subTest(hunt=entry["id"]):
+                self.assertIn(entry["kind"], {"hunt", "analysis"})
+                self.assertIn(entry["status"], {"test", "experimental"})
+                self.assertIn(
+                    entry["platform"],
+                    {"microsoft-defender-xdr", "crowdstrike-logscale", "splunk"},
+                )
+                self.assertTrue(entry["data_sources"])
+                self.assertTrue(entry["expected_signals"])
+                self.assertTrue((ROOT / entry["query"]).is_file())
+
+    def test_hunt_queries_contain_expected_signals(self) -> None:
+        for entry in HUNT_CATALOG:
+            with self.subTest(hunt=entry["id"]):
+                query = (ROOT / entry["query"]).read_text(encoding="utf-8")
+                self.assertGreater(len(query.splitlines()), 5)
+                for signal in entry["expected_signals"]:
+                    self.assertIn(signal, query)
 
 
 if __name__ == "__main__":

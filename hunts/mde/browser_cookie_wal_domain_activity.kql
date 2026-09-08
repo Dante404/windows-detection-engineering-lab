@@ -1,0 +1,32 @@
+// Experimental: correlates bursts of browser cookie WAL writes with domain activity.
+// This is an activity proxy and does not count cookies or inspect HTTP headers.
+let Lookback = 1h;
+let Bucket = 1m;
+let MinimumNetworkHits = 30;
+let MinimumWalWrites = 50;
+let DomainActivity =
+    DeviceNetworkEvents
+    | where Timestamp >= ago(Lookback)
+    | where isnotempty(RemoteUrl)
+    | summarize network_hits=count(), RemoteIPs=make_set(RemoteIP, 20),
+        NetworkProcesses=make_set(InitiatingProcessFileName, 20)
+        by DeviceId, DeviceName, RemoteUrl, TimeBucket=bin(Timestamp, Bucket)
+    | where network_hits > MinimumNetworkHits;
+let CookieWalActivity =
+    DeviceFileEvents
+    | where Timestamp >= ago(Lookback)
+    | where ActionType == "FileModified"
+    | where FileName in~ ("Cookies-wal", "cookies.sqlite-wal")
+    | extend Browser=case(FolderPath contains @"\Google\Chrome\", "Chrome",
+        FolderPath contains @"\Microsoft\Edge\", "Edge",
+        FolderPath contains @"\Mozilla\Firefox\", "Firefox", "Other")
+    | summarize wal_writes=count(), Browsers=make_set(Browser, 10),
+        WalPaths=make_set(strcat(FolderPath, "\\", FileName), 20),
+        FileEventProcesses=make_set(InitiatingProcessFileName, 20)
+        by DeviceId, DeviceName, TimeBucket=bin(Timestamp, Bucket)
+    | where wal_writes > MinimumWalWrites;
+CookieWalActivity
+| join kind=inner DomainActivity on DeviceId, DeviceName, TimeBucket
+| project Timestamp=TimeBucket, DeviceName, DeviceId, RemoteUrl, RemoteIPs,
+    network_hits, wal_writes, Browsers, WalPaths, FileEventProcesses, NetworkProcesses
+| order by wal_writes desc, network_hits desc

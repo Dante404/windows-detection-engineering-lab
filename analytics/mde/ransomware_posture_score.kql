@@ -1,0 +1,35 @@
+// Produces an end-of-day compliance trend across six ransomware-relevant controls.
+let OutputDays = 30d;
+let AssessmentLookback = 60d;
+let StartDay = startofday(ago(OutputDays));
+let EndDay = startofday(now());
+let Days = range Day from StartDay to EndDay step 1d;
+let AssessmentEvents =
+    DeviceTvmSecureConfigurationAssessment
+    | where Timestamp >= ago(AssessmentLookback)
+    | where ConfigurationId in ("scid-2003", "scid-2021", "scid-2012", "scid-2010", "scid-2011", "scid-2016")
+    | where IsApplicable == true
+    | project AssessmentTime=Timestamp, DeviceId, ConfigurationId, IsCompliant;
+Days
+| extend JoinKey=1
+| join kind=inner (AssessmentEvents | extend JoinKey=1) on JoinKey
+| where AssessmentTime < Day + 1d
+| summarize arg_max(AssessmentTime, IsCompliant) by Day, DeviceId, ConfigurationId
+| summarize ApplicableDevices=dcount(DeviceId), CompliantDevices=dcountif(DeviceId, IsCompliant == true) by Day, ConfigurationId
+| extend CompliancePercent=100.0 * todouble(CompliantDevices) / todouble(ApplicableDevices)
+| summarize PresentControls=dcount(ConfigurationId),
+    TamperProtectionPercent=maxif(CompliancePercent, ConfigurationId == "scid-2003"),
+    ControlledFolderAccessPercent=maxif(CompliancePercent, ConfigurationId == "scid-2021"),
+    RealTimeProtectionPercent=maxif(CompliancePercent, ConfigurationId == "scid-2012"),
+    AntivirusEnabledPercent=maxif(CompliancePercent, ConfigurationId == "scid-2010"),
+    DefinitionsCurrentPercent=maxif(CompliancePercent, ConfigurationId == "scid-2011"),
+    CloudProtectionPercent=maxif(CompliancePercent, ConfigurationId == "scid-2016") by Day
+| where PresentControls == 6
+| extend RansomwarePostureScore=round((TamperProtectionPercent + ControlledFolderAccessPercent
+    + RealTimeProtectionPercent + AntivirusEnabledPercent + DefinitionsCurrentPercent
+    + CloudProtectionPercent) / 6.0, 2)
+| project Day, TamperProtectionPercent, ControlledFolderAccessPercent,
+    RealTimeProtectionPercent, AntivirusEnabledPercent, DefinitionsCurrentPercent,
+    CloudProtectionPercent, RansomwarePostureScore
+| order by Day asc
+| render timechart

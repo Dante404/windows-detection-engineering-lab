@@ -1,0 +1,51 @@
+// Finds current noncompliant Windows workstation assessments for SCID-2090
+// where the drive recorded in TVM context was not observed near the assessment.
+let AssessmentLookback = 30d;
+let UsbBefore = 7d;
+let UsbAfter = 10m;
+let LatestDevices =
+    DeviceInfo
+    | where Timestamp >= ago(AssessmentLookback)
+    | summarize arg_max(Timestamp, DeviceName, OSPlatform, DeviceType, MachineGroup) by DeviceId
+    | where DeviceType =~ "Workstation"
+    | project DeviceId, InventoryTime=Timestamp, InventoryDeviceName=DeviceName, InventoryOSPlatform=OSPlatform, DeviceType, MachineGroup;
+let Assessments =
+    DeviceTvmSecureConfigurationAssessment
+    | where Timestamp >= ago(AssessmentLookback)
+    | where ConfigurationId == "scid-2090"
+    | where OSPlatform startswith "Windows"
+    | where IsApplicable == true
+    | summarize arg_max(Timestamp, *) by DeviceId, ConfigurationId
+    | where IsCompliant == false
+    | project AssessmentTime=Timestamp, DeviceId, AssessmentDeviceName=DeviceName, AssessmentOSPlatform=OSPlatform,
+        ConfigurationId, ConfigurationCategory, ConfigurationSubcategory, ContextString=tostring(Context);
+let RemovableDriveEvents =
+    DeviceEvents
+    | where Timestamp >= ago(AssessmentLookback + UsbBefore)
+    | where ActionType in ("UsbDriveMounted", "UsbDriveUnmounted", "RemovableStoragePolicyTriggered")
+    | extend EventDetails=parse_json(AdditionalFields)
+    | extend RawDrive=coalesce(tostring(EventDetails.DriveLetter), tostring(EventDetails.driveLetter),
+        tostring(EventDetails.Volume), tostring(EventDetails.MountPoint), tostring(AdditionalFields))
+    | extend DriveLetter=toupper(extract(@"(?i)([a-z]:)", 1, RawDrive))
+    | project DeviceId, UsbTime=Timestamp, UsbActionType=ActionType, DriveLetter, UsbDetails=AdditionalFields;
+Assessments
+| join kind=inner LatestDevices on DeviceId
+| join kind=leftouter RemovableDriveEvents on DeviceId
+| extend DeviceName=coalesce(InventoryDeviceName, AssessmentDeviceName), OSPlatform=coalesce(InventoryOSPlatform, AssessmentOSPlatform)
+| extend IsInAssessmentWindow=isnotnull(UsbTime) and UsbTime between (AssessmentTime - UsbBefore .. AssessmentTime + UsbAfter)
+| extend ContextMatchesDrive=IsInAssessmentWindow and isnotempty(DriveLetter)
+    and (ContextString contains DriveLetter or ContextString contains strcat('"', DriveLetter, '"'))
+| summarize RemovableDriveEventCount=countif(IsInAssessmentWindow),
+    MatchingRemovableDriveCount=countif(ContextMatchesDrive),
+    ObservedDriveLetters=make_set_if(DriveLetter, IsInAssessmentWindow, 20),
+    RemovableDriveActionTypes=make_set_if(UsbActionType, IsInAssessmentWindow, 20),
+    RemovableDriveTimes=make_set_if(UsbTime, IsInAssessmentWindow, 50),
+    RemovableDriveDetails=make_set_if(UsbDetails, IsInAssessmentWindow, 20)
+    by AssessmentTime, DeviceId, DeviceName, OSPlatform, DeviceType, MachineGroup,
+        ConfigurationId, ConfigurationCategory, ConfigurationSubcategory, ContextString
+| where MatchingRemovableDriveCount == 0
+| project AssessmentTime, DeviceId, DeviceName, OSPlatform, DeviceType, MachineGroup,
+    ConfigurationId, ConfigurationCategory, ConfigurationSubcategory, ContextString,
+    RemovableDriveEventCount, MatchingRemovableDriveCount, ObservedDriveLetters,
+    RemovableDriveActionTypes, RemovableDriveTimes, RemovableDriveDetails
+| order by AssessmentTime desc

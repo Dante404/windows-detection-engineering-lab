@@ -15,12 +15,31 @@ have been tuned against the target environment.
 | MSHTA loading remote content | T1218.005 | High |
 | Scheduled task with script or shell payload | T1053.005 | Medium |
 
+## Hunts and analytics
+
+| Query | Platform | Status |
+| --- | --- | --- |
+| [BITS download activity](hunts/logscale/bits_download_activity.cql) | CrowdStrike LogScale | Test |
+| [Office descendant child-process chain](hunts/logscale/office_child_process_chain.cql) | CrowdStrike LogScale | Test |
+| [TVM SCID-2090 removable-drive context](hunts/mde/tvm_scid_2090_removable_drive_context.kql) | Microsoft Defender XDR | Test |
+| [Attack surface reduction activity](hunts/mde/asr_activity.kql) | Microsoft Defender XDR | Test |
+| [Browser cookie WAL and domain activity](hunts/mde/browser_cookie_wal_domain_activity.kql) | Microsoft Defender XDR | Experimental |
+| [Safe Links click-to-email correlation](hunts/mde/safe_links_click_to_email.kql) | Microsoft Defender XDR | Experimental |
+| [Suspicious execution with network or DNS activity](hunts/splunk/sysmon_suspicious_execution_network.spl) | Splunk with Sysmon | Experimental |
+| [Ransomware control posture score](analytics/mde/ransomware_posture_score.kql) | Microsoft Defender XDR | Test |
+
+Query assumptions, known limitations, and tuning points are documented in
+[`docs/hunts.md`](docs/hunts.md). Machine-readable metadata lives in
+[`hunts/catalog.yml`](hunts/catalog.yml).
+
 ## Layout
 
 ```text
 rules/sigma/       Source rules using the Sigma process-creation taxonomy
 queries/kql/       Microsoft Defender XDR advanced-hunting queries
 queries/spl/       Splunk CIM Endpoint.Processes searches
+hunts/             Investigative KQL, CQL, and SPL grouped by platform
+analytics/         Security-control measurement queries
 tests/cases/       Synthetic process events used for regression testing
 tools/             Lightweight repository validation and rule evaluator
 docs/              Data-source mappings and tuning notes
@@ -39,9 +58,10 @@ python tools/validate_rules.py
 python -m unittest discover --start-directory tests --verbose
 ```
 
-The tests check rule metadata, UUIDs, condition references, query parity, and
-positive and negative synthetic events. They do not replace validation against
-the telemetry, administrative patterns, and data quality of a live environment.
+The tests check rule metadata, UUIDs, condition references, query parity, hunt
+catalog integrity, expected hunt signals, and positive and negative synthetic
+events. They do not replace validation against the telemetry, administrative
+patterns, and data quality of a live environment.
 
 ## References
 

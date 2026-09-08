@@ -1,0 +1,38 @@
+// Correlates noteworthy Safe Links email clicks with the latest available message metadata.
+// A left-outer join keeps clicks whose NetworkMessageId cannot be resolved in EmailEvents.
+let Lookback = 7d;
+let EmailLookback = 9d;
+let Clicks =
+    UrlClickEvents
+    | where Timestamp >= ago(Lookback)
+    | where Workload =~ "Email"
+    | where IsClickedThrough == true or ActionType =~ "ClickAllowed" or isnotempty(ThreatTypes)
+    | summarize arg_max(Timestamp, *) by ReportId
+    | project ClickTime=Timestamp, ClickReportId=ReportId, NetworkMessageId, AccountUpn,
+        Url, UrlChain, ClickAction=ActionType, IsClickedThrough, ClickThreatTypes=ThreatTypes,
+        ClickDetectionMethods=DetectionMethods, IPAddress, AppName;
+let Messages =
+    EmailEvents
+    | where Timestamp >= ago(EmailLookback)
+    | summarize arg_max(Timestamp, *) by NetworkMessageId, RecipientEmailAddress
+    | project EmailNetworkMessageId=NetworkMessageId, EmailTime=Timestamp, InternetMessageId,
+        SenderFromAddress, SenderMailFromAddress, SenderIPv4, RecipientEmailAddress, Subject,
+        EmailDirection, DeliveryAction, DeliveryLocation, LatestDeliveryAction,
+        LatestDeliveryLocation, EmailThreatTypes=ThreatTypes, ThreatNames,
+        AuthenticationDetails, ForwardingInformation;
+Clicks
+| join kind=leftouter Messages on $left.NetworkMessageId == $right.EmailNetworkMessageId
+| extend RecipientMatchesClicker=case(isempty(RecipientEmailAddress), "Unknown",
+    RecipientEmailAddress =~ AccountUpn, "Yes", "No")
+| extend EmailMetadataStatus=case(isempty(EmailNetworkMessageId), "Email metadata not found",
+    RecipientMatchesClicker == "Yes", "Matched clicker",
+    isnotempty(ForwardingInformation), "Joined forwarded message; recipient differs",
+    "Joined message; recipient differs")
+| project ClickTime, AccountUpn, Url, UrlChain, ClickAction, IsClickedThrough,
+    ClickThreatTypes, ClickDetectionMethods, IPAddress, AppName, NetworkMessageId,
+    EmailMetadataStatus, RecipientMatchesClicker, EmailTime, InternetMessageId,
+    SenderFromAddress, SenderMailFromAddress, SenderIPv4, RecipientEmailAddress,
+    Subject, EmailDirection, DeliveryAction, DeliveryLocation, LatestDeliveryAction,
+    LatestDeliveryLocation, EmailThreatTypes, ThreatNames, AuthenticationDetails,
+    ForwardingInformation, ClickReportId
+| order by ClickTime desc

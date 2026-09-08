@@ -1,0 +1,12 @@
+index=windows sourcetype="XmlWinEventLog:Microsoft-Windows-Sysmon/Operational" (EventCode=1 OR EventCode=3 OR EventCode=22)
+| eval process_guid=coalesce(ProcessGuid, process_guid), event_image=coalesce(Image, image), event_process_id=coalesce(ProcessId, process_id)
+| eventstats latest(eval(if(EventCode=1, event_image, null()))) AS process_image latest(eval(if(EventCode=1, CommandLine, null()))) AS process_command_line latest(eval(if(EventCode=1, ParentImage, null()))) AS parent_image latest(eval(if(EventCode=1, ParentCommandLine, null()))) AS parent_command_line latest(eval(if(EventCode=1, User, null()))) AS process_user BY host process_guid
+| where in(EventCode, 3, 22)
+| eval suspicious_process=if(match(process_image, "(?i)\\\\(powershell|pwsh|python|pythonw|wscript|cscript|mshta|rundll32|regsvr32|certutil|bitsadmin)\.exe$"), 1, 0)
+| eval suspicious_parent=if(match(parent_image, "(?i)\\\\(winword|excel|powerpnt|outlook|acrord32|mshta|wscript|cscript)\.exe$"), 1, 0)
+| eval suspicious_command=if(match(process_command_line, "(?i)(downloadstring|invoke-webrequest|start-bitstransfer|frombase64string| -enc(odedcommand)? |https?://)"), 1, 0)
+| where suspicious_process=1 OR suspicious_parent=1 OR suspicious_command=1
+| eval network_target=case(EventCode=3, coalesce(DestinationHostname, DestinationIp).":".DestinationPort, EventCode=22, QueryName)
+| stats earliest(_time) AS first_seen latest(_time) AS last_seen values(EventCode) AS event_codes values(process_user) AS users values(process_image) AS process_images values(process_command_line) AS process_command_lines values(parent_image) AS parent_images values(parent_command_line) AS parent_command_lines values(network_target) AS network_targets values(DestinationIp) AS destination_ips values(DestinationPort) AS destination_ports values(QueryName) AS dns_queries count AS event_count BY host process_guid
+| convert ctime(first_seen) ctime(last_seen)
+| sort - event_count
