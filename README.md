@@ -1,8 +1,23 @@
 # Windows detection engineering lab
 
+[![Validate detections](https://github.com/Dante404/windows-detection-engineering-lab/actions/workflows/validate.yml/badge.svg)](https://github.com/Dante404/windows-detection-engineering-lab/actions/workflows/validate.yml)
+
 A working collection of Windows endpoint detections with equivalent queries for
 Microsoft Defender XDR and Splunk. Rules are kept in `test` status until they
 have been tuned against the target environment.
+
+## Start here
+
+For a representative end-to-end example, see **PowerShell download and execute**:
+
+- [Sigma detection rule](rules/sigma/powershell_download_and_execute.yml) - process-creation selection and rule logic.
+- [Microsoft Defender XDR KQL](queries/kql/powershell_download_and_execute.kql) - an equivalent hunting query.
+- [Splunk SPL](queries/spl/powershell_download_and_execute.spl) - a CIM-based equivalent.
+- [Synthetic positive and negative cases](tests/cases/process_events.json) - expected match and non-match examples used in the offline tests.
+
+The rule looks for PowerShell combining a download primitive with an execution primitive in one command line. Legitimate administrative or software-deployment scripts can resemble this behavior, so tuning and telemetry checks are required before using it as a production alert.
+
+**Validation scope:** GitHub Actions runs structure checks and tests with synthetic cases; it does not connect to a live tenant or validate live alert quality. The rules in this repository remain in `test` or `experimental` status until tuned against the target environment.
 
 ## Detection coverage
 
